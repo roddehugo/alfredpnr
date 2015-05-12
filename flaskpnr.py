@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import lxml.html
 import re
 import requests
@@ -40,8 +41,12 @@ def gen_post_url():
     Then concatenate the url using both url pieces aforementioned
     """
     response = requests.get(base_url + 'CleanUpSessionPui.action' + end_url)
-    regex = re.search(';jsessionid=(.+)\?', response.text)
-    return base_url + 'RetrievePNR.action;jsessionid=' + regex.group(1) + end_url
+    response.raise_for_status()
+    regex = re.search(r';jsessionid=(.+)\?', response.text)
+    try:
+        return base_url + 'RetrievePNR.action;jsessionid=' + regex.group(1) + end_url
+    except AttributeError, e:
+        raise Exception("Cant' find jsessionid in GET response.")
 
 
 def retrieve_html(posturl, formdata):
@@ -51,6 +56,7 @@ def retrieve_html(posturl, formdata):
     Returns the lxml object from post response
     """
     response = requests.post(posturl, data=formdata)
+    response.raise_for_status()
     content = response.text.replace('\n', '').replace('\r', '').replace('\t', '')
     return lxml.html.fromstring(content)
 
@@ -64,8 +70,16 @@ def scrap_data(html):
         - etickets number
         - corresponding flights for the given PNR
     """
-    fullname = html.xpath('//*[@id="pax2"]//span/text()')[0]
-    _, email, _, tel = html.xpath('//*[@id="pax1"]//table[2]//td//text()')
+    if html.xpath('//*[@id="WDSError"][@style="width:95%;display:none"]'):
+        script = html.xpath('//script[@language="javascript"]//text()')[-1]
+        error = re.search(r'WDSError\.add\("(.+)"\);', script)
+        raise Exception(error.group(1))
+
+    try:
+        fullname = html.xpath('//*[@id="pax2"]//span/text()')[0]
+        _, email, _, tel = html.xpath('//*[@id="pax1"]//table[2]//td//text()')
+    except IndexError, ValueError:
+        raise Exception('Unable to find passenger information. Please review scraping process!')
 
     passenger = {
         'fullname': fullname.strip(),
@@ -109,7 +123,7 @@ def scrap_data(html):
                     'time': time[2],
                     'loc': time[3]
                 },
-                'airline': time[5],
+                'airline': time[5].replace(u'\xa0', ' '),
                 'duration': time[7],
                 'aircraft': time[9]
             })
@@ -134,7 +148,7 @@ def find(pnr, lastname):
     }
 
     html = retrieve_html(gen_post_url(), formdata)
-    passagenger, etickets, flights = scrap_data(html)
+    passenger, etickets, flights = scrap_data(html)
     return jsonify(status="ok", passenger=passenger, etickets=etickets, flights=flights)
 
 if __name__ == '__main__':
