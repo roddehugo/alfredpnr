@@ -6,15 +6,25 @@ from flask import Flask, jsonify
 from werkzeug.exceptions import default_exceptions
 from werkzeug.exceptions import HTTPException
 
-
+################################
+# Alfred PNR Flask Application #
+################################
 app = Flask(__name__)
 
+# Define url pieces
 base_url = 'https://classic.checkmytrip.com/plnext/XCMTXITN/'
 end_url = '?SITE=XCMTXITN&LANGUAGE=GB'
 
 
 def make_json_error(ex):
-    response = jsonify(message=str(ex))
+    """
+    Specialized JSON-oriented Flask App
+    When things go wrong, default errors that Flask/Werkzeug respond with are all HTML.
+    Which breaks the clients who expect JSON back even in case of errors.
+    All errors that Werkzeug may throw are now intercepted and converted into JSON response
+    http://flask.pocoo.org/snippets/83/
+    """
+    response = jsonify(status="error", message=str(ex))
     response.status_code = (
         ex.code
         if isinstance(ex, HTTPException)
@@ -24,29 +34,36 @@ def make_json_error(ex):
 
 
 def gen_post_url():
-    r_get = requests.get(base_url + 'CleanUpSessionPui.action' + end_url)
-    regex = re.search(';jsessionid=(.+)\?', r_get.text)
+    """
+    Generate the POST url
+    First make a GET request to fetch the session id from Amadeus form
+    Then concatenate the url using both url pieces aforementioned
+    """
+    response = requests.get(base_url + 'CleanUpSessionPui.action' + end_url)
+    regex = re.search(';jsessionid=(.+)\?', response.text)
     return base_url + 'RetrievePNR.action;jsessionid=' + regex.group(1) + end_url
 
 
-def retrieve_html(post_url, formdata):
-    r_post = requests.post(post_url, data=formdata)
-    content = r_post.text.replace('\n', '').replace('\r', '').replace('\t', '')
+def retrieve_html(posturl, formdata):
+    """
+    Fetch HTML DOM
+    Make a POST request with data and sanitize it
+    Returns the lxml object from post response
+    """
+    response = requests.post(posturl, data=formdata)
+    content = response.text.replace('\n', '').replace('\r', '').replace('\t', '')
     return lxml.html.fromstring(content)
 
 
-@app.route("/find/<pnr>/<lastname>")
-def get(pnr, lastname):
-    formdata = {
-        'DIRECT_RETRIEVE': 'true',
-        'SESSION_ID': '',
-        'REC_LOC': pnr,
-        'DIRECT_RETRIEVE_LASTNAME': lastname
-    }
-    html = retrieve_html(gen_post_url(), formdata)
-    import ipdb
-    ipdb.set_trace()
-
+def scrap_data(html):
+    """
+    Do the Job
+    Use lxml xpath method to scrap data from html DOM
+    Returns a dict containing:
+        - passenger information
+        - etickets number
+        - corresponding flights for the given PNR
+    """
     fullname = html.xpath('//*[@id="pax2"]//span/text()')[0]
     _, email, _, tel = html.xpath('//*[@id="pax1"]//table[2]//td//text()')
 
@@ -81,7 +98,9 @@ def get(pnr, lastname):
 
             flights[eti['number']].append({
                 'summary': eti['number'],
-                'date': html.xpath('//*[@id="tabFgtReview_%s"]//td[@class="textBold"][@colspan="2"]//text()' % i)[i].strip(),
+                'date': html.xpath(
+                    '//*[@id="tabFgtReview_%s"]//td[@class="textBold"][@colspan="2"]//text()' % i
+                )[i].strip(),
                 'departure': {
                     'time': time[0],
                     'loc': time[1]
@@ -95,7 +114,28 @@ def get(pnr, lastname):
                 'aircraft': time[9]
             })
 
-    return jsonify(passenger=passenger, etickets=etickets, flights=flights)
+    return passenger, etickets, flights
+
+
+@app.route("/find/<pnr>/<lastname>")
+def find(pnr, lastname):
+    """
+    Flask API main route
+    GET Method with two parameters:
+        - Passenger Name Record
+        - Passenger Lastname
+    Returns a JSON response
+    """
+    formdata = {
+        'DIRECT_RETRIEVE': 'true',
+        'SESSION_ID': '',
+        'REC_LOC': pnr,
+        'DIRECT_RETRIEVE_LASTNAME': lastname
+    }
+
+    html = retrieve_html(gen_post_url(), formdata)
+    passagenger, etickets, flights = scrap_data(html)
+    return jsonify(status="ok", passenger=passenger, etickets=etickets, flights=flights)
 
 if __name__ == '__main__':
     for code in default_exceptions.iterkeys():
