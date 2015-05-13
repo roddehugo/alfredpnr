@@ -111,17 +111,17 @@ def scrap_data(html):
             ]
 
             flights[eti['number']].append({
-                'summary': eti['number'],
+                'summary': eti['summary'],
                 'date': html.xpath(
                     '//*[@id="tabFgtReview_%s"]//td[@class="textBold"][@colspan="2"]//text()' % i
                 )[i].strip(),
                 'departure': {
                     'time': time[0],
-                    'loc': time[1]
+                    'location': time[1]
                 },
                 'arrival': {
                     'time': time[2],
-                    'loc': time[3]
+                    'location': time[3]
                 },
                 'airline': time[5].replace(u'\xa0', ' '),
                 'duration': time[7],
@@ -149,7 +149,7 @@ def find(pnr, lastname):
 
     html = retrieve_html(gen_post_url(), formdata)
     passenger, etickets, flights = scrap_data(html)
-    return jsonify(status="ok", passenger=passenger, etickets=etickets, flights=flights)
+    return jsonify(status="success", passenger=passenger, etickets=etickets, flights=flights)
 
 if __name__ == '__main__':
     for code in default_exceptions.iterkeys():
