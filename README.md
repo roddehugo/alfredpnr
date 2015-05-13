@@ -1,6 +1,6 @@
 # Alfred PNR
 
-As part of a development project at the [UFPE][ufpe], this application aims to publish a simple API which shamefully scrap Amadeus [CheckMyTrip](cmt) webservice.
+As part of a development project at the [UFPE][ufpe], this application aims to publish a simple API which shamefully scrap Amadeus [CheckMyTrip][cmt] webservice.
 
 ## API description
 
