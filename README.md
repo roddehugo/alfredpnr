@@ -16,8 +16,10 @@ This routes accepts as parameters:
 ## Code
 
 The web part has been developped using [Flask][flask] microframework.
+
 It uses the awesome [requests][requests] package for requesting Amadeus webservice.
-Finaly, the scraping is orchestrated through the [lxml][lxml] package
+
+Finaly, the scraping is orchestrated through the [lxml][lxml] package.
 
 [ufpe]: http://www2.cin.ufpe.br/site/index.php "Centro de Informática"
 [cmt]: https://classic.checkmytrip.com "Amadeus CheckMyTrip"
