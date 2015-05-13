@@ -77,7 +77,7 @@ def scrap_data(html):
 
     try:
         fullname = html.xpath('//*[@id="pax2"]//span/text()')[0]
-        _, email, _, tel = html.xpath('//*[@id="pax1"]//table[2]//td//text()')
+        _, email, _, tel = html.xpath('(//*[@id="pax1"]//table)[2]//td//text()')
     except IndexError, ValueError:
         raise Exception('Unable to find passenger information. Please review scraping process!')
 
