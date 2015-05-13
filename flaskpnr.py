@@ -13,7 +13,7 @@ from werkzeug.exceptions import HTTPException
 app = Flask(__name__)
 
 # Define url pieces
-base_url = 'https://classic.checkmytrip.com/plnext/XCMTXITN/'
+base_url = 'http://classic.checkmytrip.com/plnext/XCMTXITN/'
 end_url = '?SITE=XCMTXITN&LANGUAGE=GB'
 
 
