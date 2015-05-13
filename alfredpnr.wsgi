@@ -1,0 +1,1 @@
+from flaskpnr import app as application
