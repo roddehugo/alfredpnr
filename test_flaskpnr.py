@@ -25,11 +25,10 @@ class FlaskPNRTestCase(unittest.TestCase):
 
     def test_find_ok(self):
         """
-        Test with a totally random data
-        Should throw an error
+        Test with some special data
         """
-        rv = self.app.get('/find/2ebdwz/bourcier')
-        self.assertIn('Anneblanchemrs', rv.data)
+        rv = self.app.get('/find/<pnr>/<name>')
+        self.assertIn('yourname', rv.data)
 
 if __name__ == '__main__':
     unittest.main()
